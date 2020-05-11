@@ -1,0 +1,23 @@
+{
+  "name": "companion",
+  "version": "1.0.0",
+  "description": "13th age app",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "elm test",
+    "build-css": "node-sass src/ -o src/",
+    "watch-css": "npm run build-css && node-sass src/ -o src/ --watch --recursive"
+  },
+  "keywords": [
+    "elm",
+    "13thage"
+  ],
+  "author": "david.malmstrom@devcore.se",
+  "license": "ISC",
+  "dependencies": {
+    "node-sass": "^4.14.1"
+  }
+}
