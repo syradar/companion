@@ -21,7 +21,9 @@ type alias Character =
 
 type alias Model =
     { characters : List Character
+    , isCombatStarted : Bool
     , round : Int
+    , escalationDie : Int
     }
 
 
@@ -38,6 +40,8 @@ init =
               }
             ]
       , round = 1
+      , isCombatStarted = False
+      , escalationDie = 0
       }
     , Cmd.none
     )
@@ -53,6 +57,9 @@ type Msg
     | ChangeCharacterName Int String
     | ChangeCharacterInitiative Int String
     | DeleteCharacter Int
+    | StartCombat
+    | EndCombat
+    | NextRound
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -112,6 +119,27 @@ update msg model =
             , Cmd.none
             )
 
+        StartCombat ->
+            ( { model
+                | isCombatStarted = True
+              }
+            , Cmd.none
+            )
+
+        EndCombat ->
+            ( { model
+                | isCombatStarted = False
+                , round = 1
+                , escalationDie = 0
+              }
+            , Cmd.none
+            )
+
+        NextRound ->
+            ( { model | round = model.round + 1, escalationDie = clamp 0 5 model.escalationDie + 1 }
+            , Cmd.none
+            )
+
 
 sortCharacters : List Character -> List Character
 sortCharacters characters =
@@ -128,9 +156,8 @@ sortCharacters characters =
 renderCharacter : Character -> Html Msg
 renderCharacter character =
     div [ class "card" ]
-        [ input [ type_ "text", value character.name, onInput (ChangeCharacterName character.id) ] []
-        , input [ id ("character-" ++ String.fromInt character.id), type_ "number", value (String.fromInt character.initiative), onInput (ChangeCharacterInitiative character.id) ] []
-        , div [] [ text (String.fromInt character.initiative) ]
+        [ input [ class "initiative", id ("character-" ++ String.fromInt character.id), type_ "number", value (String.fromInt character.initiative), onInput (ChangeCharacterInitiative character.id) ] []
+        , input [ type_ "text", value character.name, onInput (ChangeCharacterName character.id) ] []
         , button [ onClick (DeleteCharacter character.id) ] [ text "X" ]
         ]
 
@@ -142,7 +169,36 @@ renderCharacter character =
 view : Model -> Html Msg
 view model =
     div []
-        [ h1 [] [ text "13th Age Companion" ]
+        [ h1 []
+            [ text "13th Age Companion" ]
+        , if model.isCombatStarted then
+            button
+                [ onClick EndCombat, class "end" ]
+                [ text "End combat" ]
+
+          else
+            button
+                [ onClick StartCombat, class "start" ]
+                [ text "Start combat" ]
+        , if model.isCombatStarted then
+            button
+                [ onClick NextRound, class "next" ]
+                [ text "Next round" ]
+
+          else
+            text ""
+        , if model.isCombatStarted then
+            div [ class "info" ]
+                [ h2
+                    [ class "round" ]
+                    [ text ("ROUND: " ++ String.fromInt model.round) ]
+                , h2
+                    [ class "escalation" ]
+                    [ text ("Escalation Die: " ++ String.fromInt model.escalationDie) ]
+                ]
+
+          else
+            text ""
         , div [ class "cards" ]
             (model.characters
                 |> List.map renderCharacter
