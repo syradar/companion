@@ -30,15 +30,7 @@ type alias Model =
 init : ( Model, Cmd Msg )
 init =
     ( { characters =
-            [ { name = "Goblin"
-              , initiative = 12
-              , id = 1
-              }
-            , { name = "Scanlan"
-              , initiative = 10
-              , id = 0
-              }
-            ]
+            []
       , round = 1
       , isCombatStarted = False
       , escalationDie = 0
@@ -176,10 +168,13 @@ view model =
                 [ onClick EndCombat, class "end" ]
                 [ text "End combat" ]
 
-          else
+          else if not (List.isEmpty model.characters) then
             button
                 [ onClick StartCombat, class "start" ]
                 [ text "Start combat" ]
+
+          else
+            text ""
         , if model.isCombatStarted then
             button
                 [ onClick NextRound, class "next" ]
