@@ -27,10 +27,4 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
     - run: npm ci
-    - run: npm run scss-build
-      
-    - name: Build Elm App
-      uses: jorelali/setup-elm@v2
-      with:
-        elm-version: 0.19.1
-    - run: elm-app build src/Main.elm
+    - run: npm run build
