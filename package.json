@@ -10,8 +10,8 @@
     "test": "elm test",
     "scss-build": "node-sass src/ -o src/",
     "scss-watch": "npm run scss-build && node-sass src/ -o src/ --watch --recursive",
-    "start": "elm-app start && scss-watch",
-    "build": "elm-app build && scss-build"
+    "elm-start": "elm-app start",
+    "elm-build": "elm-app build"
   },
   "keywords": [
     "elm",
