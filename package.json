@@ -8,8 +8,10 @@
   },
   "scripts": {
     "test": "elm test",
-    "build-css": "node-sass src/ -o src/",
-    "watch-css": "npm run build-css && node-sass src/ -o src/ --watch --recursive"
+    "scss-build": "node-sass src/ -o src/",
+    "scss-watch": "npm run scss-build && node-sass src/ -o src/ --watch --recursive",
+    "start": "elm-app start && scss-watch",
+    "build": "elm-app build && scss-build"
   },
   "keywords": [
     "elm",
