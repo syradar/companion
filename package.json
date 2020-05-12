@@ -19,5 +19,8 @@
   "license": "ISC",
   "dependencies": {
     "node-sass": "^4.14.1"
+  },
+  "devDependencies": {
+    "create-elm-app": "^4.2.16"
   }
 }
