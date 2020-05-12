@@ -11,7 +11,7 @@
     "scss-build": "node-sass src/ -o src/",
     "scss-watch": "npm run scss-build && node-sass src/ -o src/ --watch --recursive",
     "elm-start": "elm-app start",
-    "elm-build": "elm-app build"
+    "elm-build": "PUBLIC_URL=./ elm-app build"
   },
   "keywords": [
     "elm",
