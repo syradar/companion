@@ -16,6 +16,7 @@ jobs:
 
     strategy:
       matrix:
+        os: [ubuntu-latest]
         node-version: [12]
 
     steps:
@@ -26,10 +27,10 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-        run: npm ci
-        run: npm run scss-build
+    - run: npm ci
+    - run: npm run scss-build
       
     - name: Build Elm App
       with:
         elm-version: 0.19.1
-      run: elm-app build src/Main.elm
+    - run: elm-app build src/Main.elm
