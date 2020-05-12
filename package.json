@@ -22,5 +22,7 @@
   },
   "devDependencies": {
     "create-elm-app": "^4.2.16"
+    "elm-analyse": "^0.16.5",
+    "elm-format": "^0.8.3"
   }
 }
