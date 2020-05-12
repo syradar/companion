@@ -4,10 +4,8 @@
 name: Elm App CI
 
 on:
-  push:
-    branches: [master]
   pull_request:
-    branches: [master]
+    branches: [master, feature/*]
 
 jobs:
   build:
@@ -28,9 +26,3 @@ jobs:
       - run: npm ci
       - run: npm run scss-build
       - run: npm run elm-build
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build
