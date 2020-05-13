@@ -32,7 +32,7 @@ init : ( Model, Cmd Msg )
 init =
     ( { characters =
             []
-      , round = 1
+      , round = 0
       , isCombatStarted = False
       , isEditingInitiative = False
       , escalationDie = 0
@@ -100,13 +100,13 @@ update msg model =
                     else
                         c
 
-                focus =
-                    Browser.Dom.focus ("character-" ++ String.fromInt id)
+                focusId =
+                    "character-" ++ String.fromInt id
             in
             ( { model
                 | characters = List.map updateCharacterInitiative model.characters
               }
-            , Task.attempt (\_ -> NoOp) focus
+            , Task.attempt (\_ -> NoOp) (Browser.Dom.focus focusId)
             )
 
         DeleteCharacter id ->
@@ -124,10 +124,14 @@ update msg model =
             )
 
         EditInitiative ->
+            let
+                focusId =
+                    focusFirstCharacterOrBody model.characters
+            in
             ( { model
                 | isEditingInitiative = True
               }
-            , Cmd.none
+            , Task.attempt (\_ -> NoOp) (Browser.Dom.focus focusId)
             )
 
         StopEditInitiative ->
@@ -141,14 +145,19 @@ update msg model =
         EndCombat ->
             ( { model
                 | isCombatStarted = False
-                , round = 1
+                , round = 0
                 , escalationDie = 0
               }
             , Cmd.none
             )
 
         NextRound ->
-            ( { model | round = model.round + 1, escalationDie = clamp 0 5 model.escalationDie + 1 }
+            ( { model
+                | isEditingInitiative = False
+                , isCombatStarted = True
+                , round = model.round + 1
+                , escalationDie = clamp 0 5 model.escalationDie + 1
+              }
             , Cmd.none
             )
 
@@ -159,6 +168,20 @@ sortCharacters characters =
         |> List.sortBy
             .initiative
         |> List.reverse
+
+
+
+-- Focus Functions --
+
+
+focusFirstCharacterOrBody : List Character -> String
+focusFirstCharacterOrBody characters =
+    case List.head characters of
+        Just character ->
+            "character-" ++ String.fromInt character.id
+
+        Nothing ->
+            "body"
 
 
 
@@ -210,24 +233,24 @@ view model =
                 ]
 
           else if not (List.isEmpty model.characters) then
-            div [ class "info" ]
-                [ if model.isEditingInitiative then
-                    button
-                        [ onClick StopEditInitiative, class "start" ]
+            if model.isEditingInitiative then
+                div [ class "info" ]
+                    [ button
+                        [ onClick StopEditInitiative ]
                         [ text
                             "Stop editing initiative"
                         ]
+                    , button
+                        [ onClick NextRound, class "start" ]
+                        [ text ("Start turn " ++ String.fromInt (model.round + 1)) ]
+                    ]
 
-                  else
-                    button
+            else
+                div [ class "info" ]
+                    [ button
                         [ onClick EditInitiative, class "start" ]
-                        [ text
-                            "Edit Initiative"
-                        ]
-                , button
-                    [ onClick StartCombat, class "start" ]
-                    [ text "Start combat" ]
-                ]
+                        [ text "Start combat" ]
+                    ]
 
           else
             div []
