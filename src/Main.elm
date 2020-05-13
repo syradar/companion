@@ -32,7 +32,7 @@ init : ( Model, Cmd Msg )
 init =
     ( { characters =
             []
-      , round = 1
+      , round = 0
       , isCombatStarted = False
       , isEditingInitiative = False
       , escalationDie = 0
@@ -51,9 +51,7 @@ type Msg
     | ChangeCharacterName Int String
     | ChangeCharacterInitiative Int String
     | DeleteCharacter Int
-    | StartCombat
-    | EditInitiative
-    | StopEditInitiative
+    | RollInitiative
     | EndCombat
     | NextRound
 
@@ -114,26 +112,9 @@ update msg model =
             , Cmd.none
             )
 
-        StartCombat ->
-            ( { model
-                | isCombatStarted = True
-                , isEditingInitiative = False
-                , characters = model.characters |> sortCharacters
-              }
-            , Cmd.none
-            )
-
-        EditInitiative ->
+        RollInitiative ->
             ( { model
                 | isEditingInitiative = True
-              }
-            , Cmd.none
-            )
-
-        StopEditInitiative ->
-            ( { model
-                | isEditingInitiative = False
-                , characters = model.characters |> sortCharacters
               }
             , Cmd.none
             )
@@ -148,7 +129,22 @@ update msg model =
             )
 
         NextRound ->
-            ( { model | round = model.round + 1, escalationDie = clamp 0 5 model.escalationDie + 1 }
+            let
+                isFirstRound =
+                    not model.isCombatStarted
+            in
+            ( { model
+                | round = model.round + 1
+                , escalationDie = clamp 0 5 model.escalationDie + 1
+                , characters =
+                    if isFirstRound then
+                        model.characters |> sortCharacters
+
+                    else
+                        model.characters
+                , isCombatStarted = True
+                , isEditingInitiative = False
+              }
             , Cmd.none
             )
 
@@ -168,17 +164,25 @@ sortCharacters characters =
 renderCharacter : Character -> Html Msg
 renderCharacter character =
     div [ class "card" ]
-        [ div [ class "initiative" ] [ text (String.fromInt character.initiative) ]
-        , input [ type_ "text", value character.name, onInput (ChangeCharacterName character.id) ] []
+        [ div [] [ text character.name ]
+        , div [ class "initiative" ] [ text (String.fromInt character.initiative) ]
         , button [ onClick (DeleteCharacter character.id) ] [ text "X" ]
         ]
 
 
-renderEditingCharacter : Character -> Html Msg
-renderEditingCharacter character =
+renderEditingInitiativeCharacter : Character -> Html Msg
+renderEditingInitiativeCharacter character =
     div [ class "card" ]
-        [ input [ class "initiative", id ("character-" ++ String.fromInt character.id), type_ "number", value (String.fromInt character.initiative), onInput (ChangeCharacterInitiative character.id) ] []
-        , div [] [ text character.name ]
+        [ div [] [ text character.name ]
+        , input [ class "initiative", id ("character-" ++ String.fromInt character.id), type_ "number", value (String.fromInt character.initiative), onInput (ChangeCharacterInitiative character.id) ] []
+        ]
+
+
+renderEditingNameCharacter : Character -> Html Msg
+renderEditingNameCharacter character =
+    div [ class "card" ]
+        [ input [ type_ "text", value character.name, onInput (ChangeCharacterName character.id) ] []
+        , button [ onClick (DeleteCharacter character.id) ] [ text "X" ]
         ]
 
 
@@ -190,11 +194,14 @@ view : Model -> Html Msg
 view model =
     let
         renderCharactersFunction =
-            if model.isEditingInitiative then
-                renderEditingCharacter
+            if model.isCombatStarted then
+                renderCharacter
+
+            else if model.isEditingInitiative then
+                renderEditingInitiativeCharacter
 
             else
-                renderCharacter
+                renderEditingNameCharacter
     in
     div []
         [ h1 []
@@ -204,29 +211,26 @@ view model =
                 [ button
                     [ onClick EndCombat, class "end" ]
                     [ text "End combat" ]
-                , button
-                    [ onClick NextRound, class "next" ]
-                    [ text "Next round" ]
+                , if not (List.isEmpty model.characters) then
+                    button
+                        [ onClick NextRound, class "next" ]
+                        [ text ("Start turn " ++ String.fromInt (model.round + 1)) ]
+
+                  else
+                    text ""
                 ]
 
           else if not (List.isEmpty model.characters) then
             div [ class "info" ]
                 [ if model.isEditingInitiative then
                     button
-                        [ onClick StopEditInitiative, class "start" ]
-                        [ text
-                            "Stop editing initiative"
-                        ]
+                        [ onClick NextRound, class "start" ]
+                        [ text ("Start turn " ++ String.fromInt (model.round + 1)) ]
 
                   else
                     button
-                        [ onClick EditInitiative, class "start" ]
-                        [ text
-                            "Edit Initiative"
-                        ]
-                , button
-                    [ onClick StartCombat, class "start" ]
-                    [ text "Start combat" ]
+                        [ onClick RollInitiative, class "start" ]
+                        [ text "Roll initiative" ]
                 ]
 
           else
@@ -248,7 +252,11 @@ view model =
             (model.characters
                 |> List.map renderCharactersFunction
             )
-        , button [ onClick AddCharacter ] [ text "Add Participant" ]
+        , if not model.isCombatStarted then
+            button [ onClick AddCharacter ] [ text "Add Participant" ]
+
+          else
+            text ""
         ]
 
 
