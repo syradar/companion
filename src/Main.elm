@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Browser
 import Browser.Dom
@@ -12,10 +12,14 @@ import Task
 ---- MODEL ----
 
 
+type alias UUID =
+    String
+
+
 type alias Character =
     { name : String
     , initiative : Int
-    , id : Int
+    , uuid : UUID
     }
 
 
@@ -25,19 +29,20 @@ type alias Model =
     , isEditingInitiative : Bool
     , round : Int
     , escalationDie : Int
+    , currentUUID : UUID
     }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { characters =
-            []
+    ( { characters = []
       , round = 0
+      , currentUUID = ""
       , isCombatStarted = False
       , isEditingInitiative = False
       , escalationDie = 0
       }
-    , Cmd.none
+    , getUUID ()
     )
 
 
@@ -47,10 +52,11 @@ init =
 
 type Msg
     = NoOp
+    | RecievedUUID String
     | AddCharacter
-    | ChangeCharacterName Int String
-    | ChangeCharacterInitiative Int String
-    | DeleteCharacter Int
+    | ChangeCharacterName UUID String
+    | ChangeCharacterInitiative UUID String
+    | DeleteCharacter UUID
     | RollInitiative
     | EndCombat
     | NextRound
@@ -62,22 +68,25 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
+        RecievedUUID uuid ->
+            ( { model | currentUUID = uuid }, Cmd.none )
+
         AddCharacter ->
             ( { model
                 | characters =
                     { name = "Participant #" ++ String.fromInt (List.length model.characters + 1)
                     , initiative = 0
-                    , id = List.length model.characters + 1
+                    , uuid = model.currentUUID
                     }
                         :: model.characters
               }
-            , Cmd.none
+            , getUUID ()
             )
 
-        ChangeCharacterName id newName ->
+        ChangeCharacterName uuid newName ->
             let
                 updateCharacterName c =
-                    if c.id == id then
+                    if c.uuid == uuid then
                         { c | name = newName }
 
                     else
@@ -89,17 +98,17 @@ update msg model =
             , Cmd.none
             )
 
-        ChangeCharacterInitiative id newInitiative ->
+        ChangeCharacterInitiative uuid newInitiative ->
             let
                 updateCharacterInitiative c =
-                    if c.id == id then
+                    if c.uuid == uuid then
                         { c | initiative = Maybe.withDefault 0 (String.toInt newInitiative) }
 
                     else
                         c
 
                 focusId =
-                    "character-" ++ String.fromInt id
+                    "character-" ++ uuid
             in
             ( { model
                 | characters = List.map updateCharacterInitiative model.characters
@@ -107,8 +116,8 @@ update msg model =
             , Task.attempt (\_ -> NoOp) (Browser.Dom.focus focusId)
             )
 
-        DeleteCharacter id ->
-            ( { model | characters = List.filter (\c -> c.id /= id) model.characters }
+        DeleteCharacter uuid ->
+            ( { model | characters = List.filter (\c -> c.uuid /= uuid) model.characters }
             , Cmd.none
             )
 
@@ -169,7 +178,7 @@ focusFirstCharacterOrBody : List Character -> String
 focusFirstCharacterOrBody characters =
     case List.head characters of
         Just character ->
-            "character-" ++ String.fromInt character.id
+            "character-" ++ character.uuid
 
         Nothing ->
             "body"
@@ -184,7 +193,7 @@ renderCharacter character =
     div [ class "card" ]
         [ div [] [ text character.name ]
         , div [ class "initiative" ] [ text (String.fromInt character.initiative) ]
-        , button [ onClick (DeleteCharacter character.id) ] [ text "X" ]
+        , button [ onClick (DeleteCharacter character.uuid) ] [ text "X" ]
         ]
 
 
@@ -192,15 +201,15 @@ renderEditingInitiativeCharacter : Character -> Html Msg
 renderEditingInitiativeCharacter character =
     div [ class "card" ]
         [ div [] [ text character.name ]
-        , input [ class "initiative", id ("character-" ++ String.fromInt character.id), type_ "number", value (String.fromInt character.initiative), onInput (ChangeCharacterInitiative character.id) ] []
+        , input [ class "initiative", id ("character-" ++ character.uuid), type_ "number", value (String.fromInt character.initiative), onInput (ChangeCharacterInitiative character.uuid) ] []
         ]
 
 
 renderEditingNameCharacter : Character -> Html Msg
 renderEditingNameCharacter character =
     div [ class "card" ]
-        [ input [ type_ "text", value character.name, onInput (ChangeCharacterName character.id) ] []
-        , button [ onClick (DeleteCharacter character.id) ] [ text "X" ]
+        [ input [ type_ "text", value character.name, onInput (ChangeCharacterName character.uuid) ] []
+        , button [ onClick (DeleteCharacter character.uuid) ] [ text "X" ]
         ]
 
 
@@ -288,5 +297,24 @@ main =
         { view = view
         , init = \_ -> init
         , update = update
-        , subscriptions = always Sub.none
+        , subscriptions = subscriptions
         }
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    recieveUUID (\uuid -> RecievedUUID uuid)
+
+
+
+-- PORTS
+
+
+port getUUID : () -> Cmd msg
+
+
+port recieveUUID : (String -> msg) -> Sub msg
