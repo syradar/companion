@@ -98,13 +98,13 @@ update msg model =
                     else
                         c
 
-                focus =
-                    Browser.Dom.focus ("character-" ++ String.fromInt id)
+                focusId =
+                    "character-" ++ String.fromInt id
             in
             ( { model
                 | characters = List.map updateCharacterInitiative model.characters
               }
-            , Task.attempt (\_ -> NoOp) focus
+            , Task.attempt (\_ -> NoOp) (Browser.Dom.focus focusId)
             )
 
         DeleteCharacter id ->
@@ -113,16 +113,20 @@ update msg model =
             )
 
         RollInitiative ->
+            let
+                focusId =
+                    focusFirstCharacterOrBody model.characters
+            in
             ( { model
                 | isEditingInitiative = True
               }
-            , Cmd.none
+            , Task.attempt (\_ -> NoOp) (Browser.Dom.focus focusId)
             )
 
         EndCombat ->
             ( { model
                 | isCombatStarted = False
-                , round = 1
+                , round = 0
                 , escalationDie = 0
               }
             , Cmd.none
@@ -155,6 +159,20 @@ sortCharacters characters =
         |> List.sortBy
             .initiative
         |> List.reverse
+
+
+
+-- Focus Functions --
+
+
+focusFirstCharacterOrBody : List Character -> String
+focusFirstCharacterOrBody characters =
+    case List.head characters of
+        Just character ->
+            "character-" ++ String.fromInt character.id
+
+        Nothing ->
+            "body"
 
 
 
