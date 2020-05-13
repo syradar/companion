@@ -64,7 +64,7 @@ update msg model =
             ( { model
                 | characters =
                     { name = "Participant #" ++ String.fromInt (List.length model.characters + 1)
-                    , initiative = List.length model.characters + 1
+                    , initiative = 0
                     , id = List.length model.characters + 1
                     }
                         :: model.characters
