@@ -51,9 +51,7 @@ type Msg
     | ChangeCharacterName Int String
     | ChangeCharacterInitiative Int String
     | DeleteCharacter Int
-    | StartCombat
-    | EditInitiative
-    | StopEditInitiative
+    | RollInitiative
     | EndCombat
     | NextRound
 
@@ -114,16 +112,7 @@ update msg model =
             , Cmd.none
             )
 
-        StartCombat ->
-            ( { model
-                | isCombatStarted = True
-                , isEditingInitiative = False
-                , characters = model.characters |> sortCharacters
-              }
-            , Cmd.none
-            )
-
-        EditInitiative ->
+        RollInitiative ->
             let
                 focusId =
                     focusFirstCharacterOrBody model.characters
@@ -132,14 +121,6 @@ update msg model =
                 | isEditingInitiative = True
               }
             , Task.attempt (\_ -> NoOp) (Browser.Dom.focus focusId)
-            )
-
-        StopEditInitiative ->
-            ( { model
-                | isEditingInitiative = False
-                , characters = model.characters |> sortCharacters
-              }
-            , Cmd.none
             )
 
         EndCombat ->
@@ -152,11 +133,21 @@ update msg model =
             )
 
         NextRound ->
+            let
+                isFirstRound =
+                    not model.isCombatStarted
+            in
             ( { model
-                | isEditingInitiative = False
-                , isCombatStarted = True
-                , round = model.round + 1
+                | round = model.round + 1
                 , escalationDie = clamp 0 5 model.escalationDie + 1
+                , characters =
+                    if isFirstRound then
+                        model.characters |> sortCharacters
+
+                    else
+                        model.characters
+                , isCombatStarted = True
+                , isEditingInitiative = False
               }
             , Cmd.none
             )
@@ -191,17 +182,25 @@ focusFirstCharacterOrBody characters =
 renderCharacter : Character -> Html Msg
 renderCharacter character =
     div [ class "card" ]
-        [ div [ class "initiative" ] [ text (String.fromInt character.initiative) ]
-        , input [ type_ "text", value character.name, onInput (ChangeCharacterName character.id) ] []
+        [ div [] [ text character.name ]
+        , div [ class "initiative" ] [ text (String.fromInt character.initiative) ]
         , button [ onClick (DeleteCharacter character.id) ] [ text "X" ]
         ]
 
 
-renderEditingCharacter : Character -> Html Msg
-renderEditingCharacter character =
+renderEditingInitiativeCharacter : Character -> Html Msg
+renderEditingInitiativeCharacter character =
     div [ class "card" ]
-        [ input [ class "initiative", id ("character-" ++ String.fromInt character.id), type_ "number", value (String.fromInt character.initiative), onInput (ChangeCharacterInitiative character.id) ] []
-        , div [] [ text character.name ]
+        [ div [] [ text character.name ]
+        , input [ class "initiative", id ("character-" ++ String.fromInt character.id), type_ "number", value (String.fromInt character.initiative), onInput (ChangeCharacterInitiative character.id) ] []
+        ]
+
+
+renderEditingNameCharacter : Character -> Html Msg
+renderEditingNameCharacter character =
+    div [ class "card" ]
+        [ input [ type_ "text", value character.name, onInput (ChangeCharacterName character.id) ] []
+        , button [ onClick (DeleteCharacter character.id) ] [ text "X" ]
         ]
 
 
@@ -213,11 +212,14 @@ view : Model -> Html Msg
 view model =
     let
         renderCharactersFunction =
-            if model.isEditingInitiative then
-                renderEditingCharacter
+            if model.isCombatStarted then
+                renderCharacter
+
+            else if model.isEditingInitiative then
+                renderEditingInitiativeCharacter
 
             else
-                renderCharacter
+                renderEditingNameCharacter
     in
     div []
         [ h1 []
@@ -227,30 +229,27 @@ view model =
                 [ button
                     [ onClick EndCombat, class "end" ]
                     [ text "End combat" ]
-                , button
-                    [ onClick NextRound, class "next" ]
-                    [ text "Next round" ]
+                , if not (List.isEmpty model.characters) then
+                    button
+                        [ onClick NextRound, class "next" ]
+                        [ text ("Start turn " ++ String.fromInt (model.round + 1)) ]
+
+                  else
+                    text ""
                 ]
 
           else if not (List.isEmpty model.characters) then
-            if model.isEditingInitiative then
-                div [ class "info" ]
-                    [ button
-                        [ onClick StopEditInitiative ]
-                        [ text
-                            "Stop editing initiative"
-                        ]
-                    , button
+            div [ class "info" ]
+                [ if model.isEditingInitiative then
+                    button
                         [ onClick NextRound, class "start" ]
                         [ text ("Start turn " ++ String.fromInt (model.round + 1)) ]
-                    ]
 
-            else
-                div [ class "info" ]
-                    [ button
-                        [ onClick EditInitiative, class "start" ]
-                        [ text "Start combat" ]
-                    ]
+                  else
+                    button
+                        [ onClick RollInitiative, class "start" ]
+                        [ text "Roll initiative" ]
+                ]
 
           else
             div []
@@ -271,7 +270,11 @@ view model =
             (model.characters
                 |> List.map renderCharactersFunction
             )
-        , button [ onClick AddCharacter ] [ text "Add Participant" ]
+        , if not model.isCombatStarted then
+            button [ onClick AddCharacter ] [ text "Add Participant" ]
+
+          else
+            text ""
         ]
 
 
